@@ -1,6 +1,5 @@
 """Chain for applying constitutional principles to the outputs of another chain."""
 from typing import Any, Dict, List, Optional
-from langchain.llms import OpenAI
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.chains.base import Chain
@@ -141,7 +140,7 @@ class ConstitutionalChain(Chain):
                 response = similar_question_chain.run(question= initial_response )
                 break
             ###############
-            
+
             # Do revision
             revision = self.revision_chain.run(
                 input_prompt=input_prompt,
