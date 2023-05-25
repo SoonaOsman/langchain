@@ -137,8 +137,8 @@ class ConstitutionalChain(Chain):
 
              ############# 
             if response == inputs["question"]:    
-                similar_question_chain = LLMChain(llm=self.llm, prompt=related_question_prompt)
-                response = similar_question_chain.run(question= initial_response )
+                related_question_chain = LLMChain(llm=self.llm, prompt=related_question_prompt)
+                response = related_question_chain.run(question= initial_response )
                 break
             ###############
 
