@@ -1,12 +1,12 @@
 """Chain for applying constitutional principles to the outputs of another chain."""
 from typing import Any, Dict, List, Optional
-
+from langchain.llms import OpenAI
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.chains.base import Chain
 from langchain.chains.constitutional_ai.models import ConstitutionalPrinciple
 from langchain.chains.constitutional_ai.principles import PRINCIPLES
-from langchain.chains.constitutional_ai.prompts import CRITIQUE_PROMPT, REVISION_PROMPT
+from langchain.chains.constitutional_ai.prompts import CRITIQUE_PROMPT, REVISION_PROMPT, related_question_prompt 
 from langchain.chains.llm import LLMChain
 from langchain.prompts.base import BasePromptTemplate
 
@@ -43,7 +43,7 @@ class ConstitutionalChain(Chain):
 
             constitutional_chain.run(question="What is the meaning of life?")
     """
-
+    llm: BaseLanguageModel
     chain: LLMChain
     constitutional_principles: List[ConstitutionalPrinciple]
     critique_chain: LLMChain
@@ -104,6 +104,7 @@ class ConstitutionalChain(Chain):
                 **inputs,
                 callbacks=_run_manager.get_child(),
             )
+
         initial_response = response
         input_prompt = self.chain.prompt.format(**inputs)
 
@@ -113,9 +114,9 @@ class ConstitutionalChain(Chain):
             color="yellow",
         )
         critiques_and_revisions = []
+        
         for constitutional_principle in self.constitutional_principles:
             # Do critique
-
             raw_critique = self.critique_chain.run(
                 input_prompt=input_prompt,
                 output_from_model=response,
@@ -129,12 +130,19 @@ class ConstitutionalChain(Chain):
             # if the critique contains "No critique needed", then we're done
             # in this case, initial_output is the same as output,
             # but we'll keep it for consistency
-            if "no critique needed" in critique.lower():
-                critiques_and_revisions.append((critique, ""))
+
+            if "no critique needed" in critique.lower():   
+                critiques_and_revisions.append((critique, ""))    
                 continue
 
+             ############# 
+            if response == inputs["question"]:    
+                similar_question_chain = LLMChain(llm=self.llm, prompt=related_question_prompt)
+                response = similar_question_chain.run(question= initial_response )
+                break
+            ###############
+            
             # Do revision
-
             revision = self.revision_chain.run(
                 input_prompt=input_prompt,
                 output_from_model=response,
@@ -177,4 +185,4 @@ class ConstitutionalChain(Chain):
         output_string = output_string.split("Revision request:")[0]
         if "\n\n" in output_string:
             output_string = output_string.split("\n\n")[0]
-        return output_string
+        return output_string  
