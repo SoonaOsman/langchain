@@ -5,7 +5,7 @@ from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.chains.base import Chain
 from langchain.chains.constitutional_ai.models import ConstitutionalPrinciple
 from langchain.chains.constitutional_ai.principles import PRINCIPLES
-from langchain.chains.constitutional_ai.prompts import CRITIQUE_PROMPT, REVISION_PROMPT, related_question_prompt 
+from langchain.chains.constitutional_ai.prompts import CRITIQUE_PROMPT, REVISION_PROMPT, related_question_prompt
 from langchain.chains.llm import LLMChain
 from langchain.prompts.base import BasePromptTemplate
 
@@ -114,12 +114,13 @@ class ConstitutionalChain(Chain):
             color="yellow",
         )
         critiques_and_revisions = []
-        
+        not_fulfilled_principles_list=[]
         for constitutional_principle in self.constitutional_principles:
+           
             # Do critique
             raw_critique = self.critique_chain.run(
                 input_prompt=input_prompt,
-                output_from_model=response,
+                output_from_model=initial_response,
                 critique_request=constitutional_principle.critique_request,
                 callbacks=_run_manager.get_child(),
             )
@@ -135,12 +136,9 @@ class ConstitutionalChain(Chain):
                 critiques_and_revisions.append((critique, ""))    
                 continue
 
-             ############# 
-            if response == inputs["question"]:    
-                related_question_chain = LLMChain(llm=self.llm, prompt=related_question_prompt)
-                response = related_question_chain.run(question= initial_response )
-                break
-            ###############
+            if initial_response == inputs["question"]:  
+                not_fulfilled_principles_list.append(constitutional_principle.name)
+                continue               
 
             # Do revision
             revision = self.revision_chain.run(
@@ -172,7 +170,17 @@ class ConstitutionalChain(Chain):
                 color="yellow",
             )
 
-        final_output: Dict[str, Any] = {"output": response}
+        if initial_response == inputs["question"]:
+            if len(not_fulfilled_principles_list)!=0:
+                related_question_chain = LLMChain(llm=self.llm, prompt=related_question_prompt)
+                related_question = related_question_chain.run(question= initial_response )
+                final_output: Dict[str, Any] = {"output":  {"response": related_question.strip(), "not_fulfilled_principles": not_fulfilled_principles_list}}   
+            else:
+                final_output: Dict[str, Any] = {"output":  {"response": response.strip(), "not_fulfilled_principles": None}} 
+                
+        else:
+            final_output: Dict[str, Any] = {"output": response}
+  
         if self.return_intermediate_steps:
             final_output["initial_output"] = initial_response
             final_output["critiques_and_revisions"] = critiques_and_revisions

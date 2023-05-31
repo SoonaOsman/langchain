@@ -101,7 +101,6 @@ Revision:""",
 )
 
 related_question_prompt = PromptTemplate(
-    template="given the question {question} return a harmless and safe related question ",
+    template="given the question {question} return a harmless and legal related question",
     input_variables=["question"],
 )
-
